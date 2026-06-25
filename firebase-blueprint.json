@@ -1,0 +1,168 @@
+{
+  "entities": {
+    "user": {
+      "title": "User Profile",
+      "description": "User account details, wallet balances, role, and security settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "avatar": { "type": "string" },
+        "verified": { "type": "boolean" },
+        "twoFactorEnabled": { "type": "boolean" },
+        "walletBalance": { "type": "number" },
+        "earnings": { "type": "number" },
+        "discordWebhook": { "type": "string" },
+        "bio": { "type": "string" }
+      },
+      "required": ["uid", "username", "email", "role"]
+    },
+    "event": {
+      "title": "Tournament Event",
+      "description": "Information about a specific gaming tournament or live match",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "game": { "type": "string" },
+        "description": { "type": "string" },
+        "fee": { "type": "number" },
+        "prizePool": { "type": "number" },
+        "date": { "type": "string" },
+        "status": { "type": "string", "enum": ["upcoming", "live", "completed"] },
+        "maxParticipants": { "type": "number" },
+        "slotsFilled": { "type": "number" },
+        "rules": { "type": "string" },
+        "winners": { "type": "string" }
+      },
+      "required": ["id", "title", "game", "fee", "prizePool", "date", "status"]
+    },
+    "registration": {
+      "title": "Event Registration",
+      "description": "Maps a user's registration and entry fee payment for a tournament",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "eventId": { "type": "string" },
+        "username": { "type": "string" },
+        "teamName": { "type": "string" },
+        "status": { "type": "string", "enum": ["registered", "checked_in"] },
+        "paid": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "eventId", "username", "status", "paid"]
+    },
+    "leaderboard": {
+      "title": "Leaderboard Rank",
+      "description": "Contains rank standing, points, and earnings for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "points": { "type": "number" },
+        "wins": { "type": "number" },
+        "earnings": { "type": "number" },
+        "mvpPoints": { "type": "number" },
+        "platform": { "type": "string" },
+        "region": { "type": "string" }
+      },
+      "required": ["id", "userId", "username", "points", "wins", "earnings"]
+    },
+    "mvpVote": {
+      "title": "MVP Vote",
+      "description": "Nomination cast for a match MVP after completion",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "eventId": { "type": "string" },
+        "voterUserId": { "type": "string" },
+        "nomineeUserId": { "type": "string" },
+        "nomineeUsername": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "eventId", "voterUserId", "nomineeUserId", "nomineeUsername", "createdAt"]
+    },
+    "withdrawal": {
+      "title": "Withdrawal Request",
+      "description": "A payment cash-out request from the user's wallet earnings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "amount": { "type": "number" },
+        "upi": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "username", "amount", "upi", "status", "createdAt"]
+    },
+    "notification": {
+      "title": "In-app Alert Notification",
+      "description": "Fires match notifications and alerts to a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "body", "read", "createdAt"]
+    },
+    "walletTransaction": {
+      "title": "Wallet Transaction Log",
+      "description": "Historical records of wallet additions, deductions, winnings, or cashouts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["addition", "deduction", "payout", "withdrawal"] },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["completed", "pending", "rejected"] }
+      },
+      "required": ["id", "userId", "type", "amount", "description", "createdAt", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "User profile collection, readable by anyone, writable by owner"
+    },
+    "/events/{eventId}": {
+      "schema": "event",
+      "description": "Gaming tournament events master record, read by anyone, write by admin"
+    },
+    "/registrations/{registrationId}": {
+      "schema": "registration",
+      "description": "Registrations, read by creator/admin, write by registrant with payment"
+    },
+    "/leaderboards/{leaderboardId}": {
+      "schema": "leaderboard",
+      "description": "Leaderboard high scores, read by anyone, write by admin/system and user MVP updates"
+    },
+    "/mvpVotes/{voteId}": {
+      "schema": "mvpVote",
+      "description": "Participant nominations for match MVP after matches conclude"
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": "withdrawal",
+      "description": "Withdrawal request data, read by user/admin, write by user/admin"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "notification",
+      "description": "User-specific match and status notifications, actions, read/write by user"
+    },
+    "/walletTransactions/{transId}": {
+      "schema": "walletTransaction",
+      "description": "Historical log of wallet activities, additions, deductions, and payouts"
+    }
+  }
+}

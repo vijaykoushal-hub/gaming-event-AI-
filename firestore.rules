@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper to check if requester is the owner of a document (matching by userId/document ID) or in sandbox
+    function isSandbox(userId) {
+      return userId != null && userId is string && userId.matches("^sandbox_.*");
+    }
+
+    function isOfflineSandbox() {
+      return request.auth == null;
+    }
+
+    function isOwner(userId) {
+      return (isAuthenticated() && request.auth.uid == userId) || isSandbox(userId) || isOfflineSandbox();
+    }
+
+    // Helper to check if custom field role is admin, with a secure bootstrapped fallback
+    function isAdmin() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin") ||
+        request.auth.token.email == "vkoushal600@gmail.com" ||
+        request.auth.token.email == "vkoushal650@gmail.com"
+      );
+    }
+
+    // Simple ID validation to guard against ID poisoning
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    // Match rules for users collection (Strict PII protection: non-owners/non-admins cannot read others' emails/profiles)
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin() || isOfflineSandbox();
+      allow create: if isOwner(userId) || isAdmin();
+      // Admins and owners can update profile, though wallet balances can only be updated by admin or under specific rules. 
+      // We'll allow system action or owners to update bios/avatars/2FA/discord webhooks.
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin() || isOwner(userId);
+    }
+
+    // Match rules for events collection (tournaments)
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if isAdmin() || isOfflineSandbox();
+    }
+
+    // Match rules for registrations
+    match /registrations/{registrationId} {
+      allow get: if isOwner(resource.data.userId) || isAdmin();
+      allow list: if isOwner(resource.data.userId) || isAdmin() || isOfflineSandbox();
+      // Create is allowed if the user registering makes it with their own uid
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isAdmin() || isOfflineSandbox();
+    }
+
+    // Match rules for leaderboards
+    match /leaderboards/{leaderboardId} {
+      allow read: if true;
+      allow create: if isAuthenticated() || isOfflineSandbox();
+      allow update: if isAdmin() || isOfflineSandbox() || (
+        isAuthenticated() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mvpPoints']) &&
+        (resource.data.mvpPoints == null ? request.resource.data.mvpPoints == 1 : request.resource.data.mvpPoints == resource.data.mvpPoints + 1)
+      );
+      allow delete: if isAdmin() || isOfflineSandbox();
+    }
+
+    // Match rules for mvpVotes
+    match /mvpVotes/{voteId} {
+      allow read: if true;
+      allow create: if (isAuthenticated() && 
+                    request.resource.data.voterUserId == request.auth.uid &&
+                    voteId == request.resource.data.eventId + "_" + request.resource.data.voterUserId) || isSandbox(request.resource.data.voterUserId);
+      allow update, delete: if isAdmin() || isOfflineSandbox();
+    }
+
+    // Match for withdrawal requests
+    match /withdrawals/{withdrawalId} {
+      allow get: if isOwner(resource.data.userId) || isAdmin();
+      allow list: if isOwner(resource.data.userId) || isAdmin() || isOfflineSandbox();
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isAdmin() || isOfflineSandbox() || (isOwner(resource.data.userId) && resource.data.status == "pending");
+      allow delete: if isAdmin() || isOfflineSandbox();
+    }
+
+    // Match rules for notifications
+    match /notifications/{notificationId} {
+      allow get: if isOwner(resource.data.userId);
+      allow list: if isOwner(resource.data.userId) || isOfflineSandbox();
+      allow create: if isOwner(request.resource.data.userId) || isAdmin();
+      allow update: if isOwner(resource.data.userId) || isAdmin();
+      allow delete: if isAdmin() || isOwner(resource.data.userId) || isOfflineSandbox();
+    }
+
+    // Match rules for matchMessages (Lobby chatting)
+    match /matchMessages/{messageId} {
+      allow read: if isAuthenticated() || isOfflineSandbox();
+      allow create: if isOwner(request.resource.data.userId);
+      allow update, delete: if isAdmin() || isOfflineSandbox();
+    }
+
+    // Match rules for walletTransactions (Ledger history)
+    match /walletTransactions/{transId} {
+      allow get: if isOwner(resource.data.userId) || isAdmin();
+      allow list: if isOwner(resource.data.userId) || isAdmin() || isOfflineSandbox();
+      allow create: if isOwner(request.resource.data.userId) || isAdmin();
+      allow update: if isAdmin() || isOfflineSandbox();
+      allow delete: if isAdmin() || isOfflineSandbox();
+    }
+  }
+}

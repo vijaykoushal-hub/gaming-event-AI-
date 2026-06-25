@@ -1,0 +1,6 @@
+{
+  "name": "GamerZone",
+  "description": "Live gaming updates, tournament registrations, real-time leaderboard, match alerts, admin dashboards, and earnings withdraw system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
