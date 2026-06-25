@@ -258,8 +258,8 @@ export default function App() {
             email: rawUser.email || "guest@gamerzone.com",
             role: (rawUser.email === "vkoushal600@gmail.com" || rawUser.email === "vkoushal650@gmail.com" || isAdminMode) ? "admin" : "user", // Auto-admin the principal user!
             avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${fallbackUsername}`,
-            verified: false,
-            phoneVerified: false,
+            verified: true,
+            phoneVerified: true,
             twoFactorEnabled: false,
             walletBalance: 500, // Pre-load 500 coins so they can try paid entries right away!
             earnings: 0,
@@ -274,6 +274,11 @@ export default function App() {
             profile.role = "admin";
             await dbSaveUserProfile(profile);
           }
+        }
+        if (profile && (!profile.phoneVerified || !profile.verified)) {
+          profile.phoneVerified = true;
+          profile.verified = true;
+          await dbSaveUserProfile(profile);
         }
         setUserProfile(profile);
 
@@ -548,8 +553,8 @@ export default function App() {
           email: email || `${demoUsername.toLowerCase()}@gamerpulse.com`,
           role: (email === "vkoushal600@gmail.com" || email === "vkoushal650@gmail.com" || isAdminMode) ? "admin" : "user",
           avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${demoUsername}`,
-          verified: false,
-          phoneVerified: false,
+          verified: true,
+          phoneVerified: true,
           twoFactorEnabled: false,
           walletBalance: 1000, // Pre-load 1000 coins for testing
           earnings: 250,
@@ -603,8 +608,8 @@ export default function App() {
           email: `${demoUsername.toLowerCase()}@gamerpulse.com`,
           role: "admin", // Let them try admin functions too in local sandbox mode!
           avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${demoUsername}`,
-          verified: false,
-          phoneVerified: false,
+          verified: true,
+          phoneVerified: true,
           twoFactorEnabled: false,
           walletBalance: 1000, // Pre-load 1000 coins for testing
           earnings: 250,
@@ -1071,13 +1076,6 @@ export default function App() {
           <Loader2 className="h-8 w-8 animate-spin text-gaming-blue" />
           <span className="text-xs font-mono text-gray-400 uppercase tracking-widest">LOADING GAMER SECURE PROFILE...</span>
         </div>
-      ) : (userProfile && !userProfile.phoneVerified) ? (
-        <OTPVerificationModal
-          user={userProfile}
-          onVerifySuccess={handleVerifyPhoneSuccess}
-          onLogout={handleLogout}
-          isDarkMode={isDarkMode}
-        />
       ) : (
         
         /* LOGGED IN APPLICATION INTERFACE */
